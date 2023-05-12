@@ -9,7 +9,13 @@ All that is needed is a folders change in the data folder and we can differentia
 
 0 is basketball and a 1 is lacrosse
 
-IMGHDR cannot be used as in the tutorial so we use cv2 instead as seen around line 50
+DIFFERENCES FROM TUTORIAL:
+
+NO IMGHDR
+PLT.IMREAD NOT CV2.IMREAD
+MAKES FILE OUTPUTS
+CAN TAKE JPG
+
 """
 
 
@@ -36,7 +42,12 @@ for gpu in gpus:
 data_dir = 'data'
 
 #makes our good image exts
-image_exts = ['jpeg','bmp','png']
+
+#JPGS MAY BE AN ISSUE BUT KEEP RUNNING TESTS
+#SEEMS LIKE IF I DOWNLOAD IMAGES FROM GOOGLE THAT SOME THAT ARE LABELED JPG ARE ACTUALLY NOT 
+#HAVE TESTED IMAGES THAT I KNOW ARE JPG HAVE WORKED 
+
+image_exts = ['jpeg','bmp','png', 'jpg']
 
 
 #takes out bad images
@@ -49,7 +60,10 @@ for image_class in os.listdir(data_dir):
         image_path = os.path.join(data_dir, image_class, image)
         try:
             #reads in the image and creats a form variable that will give us some sort of .jpg .png etc
-            img = cv2.imread(image_path)
+            
+            #CV2 WORKS FINE FOR BMP JPEG AND PNG, BUT WE ARE GOING TO TRY PYPLOT BECAUSE THAT CAN READ IN JPG
+
+            img = plt.imread(image_path)
             form = ''
             #if we have image then give us the format
             if img is not None:
@@ -104,9 +118,21 @@ test = data.skip(train_size+val_size).take(test_size)
 
 
 #DEEP MODEL
+
+#changing (3,3) does not have a lot of time change but 3,3 seems like the sweet spot. too big or too small of a pixel grid gives bad results
+#more filters takes far longer but does seem to hit 100% accuracy more often that less filters.
+#really just get as much data as possible. this model would be good if we only had to build it once, figure out how to do then they just run other data through to categorize instead of training the model over and over 
+
+
+#sequential is a model building API, great for 1 data input and 1 data output
 model = Sequential()
 #uses filters to make a classification
 #relu means only see the positive values, makes all negative values 0
+#CONV2d is a 2d spacial convulational layer. Maxpooling is a condensing layer and gets the max from each image
+#dense is a fulyl connected layer and flatten gets us from a convolutional layer into a format our dense layer can take
+
+#16 refers to number of filters, (3,3) refers to 3 pix by 3 pix and have a stride of 1.
+#ONLY FIRST LAYER IS INPUT
 model.add(Conv2D(16, (3,3), 1, activation = 'relu', input_shape = (256, 256, 3)))
 #takes max value
 model.add(MaxPooling2D())
@@ -118,14 +144,17 @@ model.add(MaxPooling2D())
 model.add(Conv2D(16, (3,3), 1, activation = 'relu'))
 model.add(MaxPooling2D())
 
-#flattens the values
+#flattens the values to a single value
 model.add(Flatten())
 
+#dense layers are fully connected NN layers. 256 nuerons in our layer then we will get a single output neuron
 model.add(Dense(256, activation = 'relu'))
 #maps betwwen 0 and 1 
 model.add(Dense(1, activation = 'sigmoid'))
 
 #adam is optimizer, we want to track accuracy
+
+#Loss can be seen as a distance between the true values of the problem and the values predicted by the model. Greater the loss is, more huge is the errors you made on the data.
 model.compile('adam', loss= tf.losses.BinaryCrossentropy(), metrics = ['accuracy'])
 
 #TRAIN THE NETWORK
@@ -135,6 +164,7 @@ logdir = 'logs'
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir = logdir)
 
 #epochs are how many runs we do over a training set. we pass over our training data to run an evaluation on our evaluation data and we want to log our information to tensorboard
+#fit is just the training component. Predict is what we use later instead of fit
 hist = model.fit(train, epochs=20, validation_data = val, callbacks = [tensorboard_callback])
 
 #now we are totally trained
@@ -234,7 +264,7 @@ for image in os.listdir(os.path.join(lacrosse_and_basketall_dir)):
     image_path = os.path.join(lacrosse_and_basketall_dir, image)
     try:
         #reads in the image and creats a form variable that will give us some sort of .jpg .png etc
-        img = cv2.imread(image_path)
+        img = plt.imread(image_path)
         form = ''
         #if we have image then give us the format
         if img is not None:
@@ -252,7 +282,7 @@ for image in os.listdir(os.path.join(lacrosse_and_basketall_dir)):
 for image in os.listdir(os.path.join(lacrosse_and_basketall_dir)):
     #gets image path
     image_path = os.path.join(lacrosse_and_basketall_dir, image)
-    img = cv2.imread(image_path)
+    img = plt.imread(image_path)
     resize = tf.image.resize(img, (256,256))
 
     #adds an extra dimanesion as our model expects a batch of images not just 1
@@ -273,7 +303,7 @@ for image in os.listdir(os.path.join(lacrosse_and_basketall_dir)):
     file_path = os.path.join(save_location, image)
 
     # saves img to specified location
-    cv2.imwrite(file_path, img)
+    plt.imsave(file_path, img)
 
  
 #SAVE THE MODEL
